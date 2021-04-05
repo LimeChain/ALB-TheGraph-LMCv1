@@ -1,53 +1,133 @@
-import { BigInt } from "@graphprotocol/graph-ts"
+import { BigInt, Bytes, json, log } from "@graphprotocol/graph-ts"
 import {
   StakingRewardsFactory,
-  OwnershipTransferred
+  OwnershipTransferred,
+  DeployCall
 } from "../generated/StakingRewardsFactory/StakingRewardsFactory"
-import { ExampleEntity } from "../generated/schema"
+import {
+  StakingRewardsTemplate
+} from '../generated/templates'
+import {
+  StakingRewards as StakingRewardsContract,
+  RewardAdded,
+  RewardExtended,
+  RewardPaid,
+  Staked,
+  Withdrawn
+} from '../generated/templates/StakingRewards/StakingRewards'
+import {
+  StakingRewardsContract as StakingRewardsContractEntity,
+  Stake as StakeEntity,
+  Withdraw as WithdrawEntity,
+  RewardPaid as RewardPaidEntity
+} from "../generated/schema"
 
-export function handleOwnershipTransferred(event: OwnershipTransferred): void {
-  // Entities can be loaded from the store using a string ID; this ID
-  // needs to be unique across all entities of the same type
-  let entity = ExampleEntity.load(event.transaction.from.toHex())
 
-  // Entities only exist after they have been saved to the store;
-  // `null` checks allow to create entities on demand
-  if (entity == null) {
-    entity = new ExampleEntity(event.transaction.from.toHex())
+export function handleOwnershipTransferred(event: OwnershipTransferred): void {}
 
-    // Entity fields can be set using simple assignments
-    entity.count = BigInt.fromI32(0)
+export function handleDeploy(call: DeployCall): void {
+  let contract = StakingRewardsFactory.bind(call.to)
+  let address = contract.stakingRewardsByStakingToken(call.inputs._stakingToken)
+
+  StakingRewardsTemplate.create(address)
+
+  let entity = new StakingRewardsContractEntity(address.toHex())
+  entity.id = address.toHex()
+  entity.blockNumber = call.block.number
+  entity.timestamp = call.block.timestamp
+  entity.address = address
+  entity.stakingToken = call.inputs._stakingToken
+
+  let array = call.inputs._rewardsTokens
+  let out = new Array<Bytes>(array.length)
+  for (let i = 0; i < array.length; i++) {
+    out[i] = array[i]
   }
 
-  // BigInt and BigDecimal math are supported
-  entity.count = entity.count + BigInt.fromI32(1)
+  entity.rewardsTokens = out
+  entity.rewardsAmounts = call.inputs._rewardsAmounts
+  entity.rewardsDuration = call.inputs._rewardsDuration
 
-  // Entity fields can be set based on event parameters
-  entity.previousOwner = event.params.previousOwner
-  entity.newOwner = event.params.newOwner
-
-  // Entities can be written to the store with `.save()`
   entity.save()
+}
 
-  // Note: If a handler doesn't require existing field values, it is faster
-  // _not_ to load the entity from the store. Instead, create it fresh with
-  // `new Entity(...)`, set the fields that should be updated and save the
-  // entity back to the store. Fields that were not set or unset remain
-  // unchanged, allowing for partial updates to be applied.
+export function handleRewardAdded(event: RewardAdded): void {}
 
-  // It is also possible to access smart contracts from mappings. For
-  // example, the contract that has emitted the event can be connected to
-  // with:
-  //
-  // let contract = Contract.bind(event.address)
-  //
-  // The following functions can then be called on this contract to access
-  // state variables and other data:
-  //
+export function handleRewardExtended(event: RewardExtended): void {}
+
+export function handleRewardPaid(event: RewardPaid): void {
+  let entity = RewardPaidEntity.load(event.transaction.hash.toHex())
+
+  // error case
+  if (entity != null && entity.blockNumber != event.block.number) {
+    log.error('BlockNumbers not matching ', [entity.id])
+    return
+  }
+
+  if (entity === null) {
+    entity = new RewardPaidEntity(event.transaction.hash.toHex())
+
+    entity.blockNumber = event.block.number
+    entity.timestamp = event.block.timestamp
+    entity.user = event.params.user
+    entity.lmc = event.transaction.to
+  }
+
+  entity.tokens.push(event.params.rewardToken)
+  entity.amounts.push(event.params.rewardAmount)
+
+  entity.save()
+}
+
+export function handleStaked(event: Staked): void {
+  // let entity = new StakeEntity(event.transaction.hash.toHex())
+  // let contract = StakingRewardsContract.bind(event.address)
+
+  // entity.blockNumber = event.block.number
+  // entity.timestamp = event.block.timestamp
+  // entity.user = event.params.user
+  // entity.lmc = event.address
+  // entity.token = contract.stakingToken()
+  // entity.amount = event.params.amount
+
+  // entity.save()
+}
+
+export function handleWithdrawn(event: Withdrawn): void {
+  // let entity = new WithdrawEntity(event.transaction.hash.toHex())
+  // let contract = StakingRewardsContract.bind(event.address)
+
+  // entity.blockNumber = event.block.number
+  // entity.timestamp = event.block.timestamp
+  // entity.user = event.params.user
+  // entity.lmc = event.transaction.to
+  // entity.token = contract.stakingToken()
+  // entity.amount = event.params.amount
+
+  // entity.save()
+}
+
   // - contract.hasStakingStarted(...)
   // - contract.isOwner(...)
   // - contract.owner(...)
   // - contract.stakingRewardsByStakingToken(...)
   // - contract.stakingRewardsGenesis(...)
   // - contract.stakingTokens(...)
-}
+
+  // - contract.rewardsAmountsArr(...)
+  // - contract.rewardsDistributor(...)
+  // - contract.rewardsTokensArr(...)
+  // - contract.rewardsTokensMap(...)
+  // - contract.stakingToken(...)
+  // - contract.getRewardsTokensCount(...)
+  // - contract.getUserRewardPerTokenRecorded(...)
+  // - contract.getUserReward(...)
+  // - contract.totalStakesAmount(...)
+  // - contract.balanceOf(...)
+  // - contract.getRewardForDuration(...)
+  // - contract.hasPeriodStarted(...)
+  // - contract.lastTimeRewardApplicable(...)
+  // - contract.rewardPerToken(...)
+  // - contract.earned(...)
+  // - contract.getPeriodsToExtend(...)
+  // - contract.hasPeriodFinished(...)

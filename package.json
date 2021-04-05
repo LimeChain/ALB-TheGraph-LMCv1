@@ -4,7 +4,7 @@
   "scripts": {
     "codegen": "graph codegen",
     "build": "graph build",
-    "deploy": "graph deploy --node https://api.thegraph.com/deploy/ --ipfs https://api.thegraph.com/ipfs/ skeremidchiev/alb-lmcv1",
+    "deploy": "graph deploy --debug --node https://api.thegraph.com/deploy/ --ipfs https://api.thegraph.com/ipfs/ skeremidchiev/alb-lmcv1",
     "create-local": "graph create --node http://localhost:8020/ skeremidchiev/alb-lmcv1",
     "remove-local": "graph remove --node http://localhost:8020/ skeremidchiev/alb-lmcv1",
     "deploy-local": "graph deploy --node http://localhost:8020/ --ipfs http://localhost:5001 skeremidchiev/alb-lmcv1"

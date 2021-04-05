@@ -1,6 +1,44 @@
-type ExampleEntity @entity {
+type StakingRewardsContract @entity {
   id: ID!
-  count: BigInt!
-  previousOwner: Bytes! # address
-  newOwner: Bytes! # address
+  blockNumber: BigInt!
+  timestamp: BigInt!
+
+  address: Bytes!
+  stakingToken: Bytes!
+  rewardsTokens: [Bytes!]!
+  rewardsAmounts: [BigInt!]!
+  rewardsDuration: BigInt
+}
+
+type Stake @entity {
+  id: ID!
+  blockNumber: BigInt!
+  timestamp: BigInt!
+
+  user: Bytes!
+  lmc: Bytes
+  token: Bytes!
+  amount: BigInt!
+}
+
+type Withdraw @entity {
+  id: ID!
+  blockNumber: BigInt!
+  timestamp: BigInt!
+
+  user: Bytes!
+  lmc: Bytes
+  token: Bytes!
+  amount: BigInt!
+}
+
+type RewardPaid @entity {
+  id: ID!
+  blockNumber: BigInt!
+  timestamp: BigInt!
+
+  user: Bytes!
+  lmc: Bytes
+  tokens: [Bytes!]!
+  amounts: [BigInt!]!
 }
