@@ -8,20 +8,19 @@ import {
   StakingRewardsTemplate
 } from '../generated/templates'
 import {
-  StakingRewards as StakingRewardsContract,
+  StakingRewards,
   RewardAdded,
   RewardExtended,
   RewardPaid,
   Staked,
   Withdrawn
-} from '../generated/templates/StakingRewards/StakingRewards'
+} from '../generated/templates/StakingRewardsTemplate/StakingRewards'
 import {
   StakingRewardsContract as StakingRewardsContractEntity,
   Stake as StakeEntity,
   Withdraw as WithdrawEntity,
   RewardPaid as RewardPaidEntity
 } from "../generated/schema"
-
 
 export function handleOwnershipTransferred(event: OwnershipTransferred): void {}
 
@@ -71,6 +70,8 @@ export function handleRewardPaid(event: RewardPaid): void {
     entity.timestamp = event.block.timestamp
     entity.user = event.params.user
     entity.lmc = event.transaction.to
+    entity.tokens = new Array<Bytes>()
+    entity.amounts = new Array<BigInt>()
   }
 
   entity.tokens.push(event.params.rewardToken)
@@ -80,31 +81,31 @@ export function handleRewardPaid(event: RewardPaid): void {
 }
 
 export function handleStaked(event: Staked): void {
-  // let entity = new StakeEntity(event.transaction.hash.toHex())
-  // let contract = StakingRewardsContract.bind(event.address)
+  let entity = new StakeEntity(event.transaction.hash.toHex())
+  let stakingRewardsInstance = StakingRewards.bind(event.address)
 
-  // entity.blockNumber = event.block.number
-  // entity.timestamp = event.block.timestamp
-  // entity.user = event.params.user
-  // entity.lmc = event.address
-  // entity.token = contract.stakingToken()
-  // entity.amount = event.params.amount
+  entity.blockNumber = event.block.number
+  entity.timestamp = event.block.timestamp
+  entity.user = event.params.user
+  entity.lmc = event.address
+  entity.token = stakingRewardsInstance.stakingToken()
+  entity.amount = event.params.amount
 
-  // entity.save()
+  entity.save()
 }
 
 export function handleWithdrawn(event: Withdrawn): void {
-  // let entity = new WithdrawEntity(event.transaction.hash.toHex())
-  // let contract = StakingRewardsContract.bind(event.address)
+  let entity = new WithdrawEntity(event.transaction.hash.toHex())
+  let stakingRewardsInstance = StakingRewards.bind(event.address)
 
-  // entity.blockNumber = event.block.number
-  // entity.timestamp = event.block.timestamp
-  // entity.user = event.params.user
-  // entity.lmc = event.transaction.to
-  // entity.token = contract.stakingToken()
-  // entity.amount = event.params.amount
+  entity.blockNumber = event.block.number
+  entity.timestamp = event.block.timestamp
+  entity.user = event.params.user
+  entity.lmc = event.transaction.to
+  entity.token = stakingRewardsInstance.stakingToken()
+  entity.amount = event.params.amount
 
-  // entity.save()
+  entity.save()
 }
 
   // - contract.hasStakingStarted(...)
