@@ -1,4 +1,4 @@
-type StakingRewardsContract @entity {
+type LMC @entity {
   id: ID!
   blockNumber: BigInt!
   timestamp: BigInt!
@@ -15,8 +15,8 @@ type Stake @entity {
   blockNumber: BigInt!
   timestamp: BigInt!
 
-  user: Bytes!
-  lmc: Bytes
+  user: User!
+  lmc: LMC!
   token: Bytes!
   amount: BigInt!
 }
@@ -26,8 +26,8 @@ type Withdraw @entity {
   blockNumber: BigInt!
   timestamp: BigInt!
 
-  user: Bytes!
-  lmc: Bytes
+  user: User!
+  lmc: LMC!
   token: Bytes!
   amount: BigInt!
 }
@@ -37,8 +37,16 @@ type RewardPaid @entity {
   blockNumber: BigInt!
   timestamp: BigInt!
 
-  user: Bytes!
-  lmc: Bytes
+  user: User!
+  lmc: LMC!
   tokens: [Bytes!]!
   amounts: [BigInt!]!
+}
+
+type User @entity {
+  id: ID!
+
+  stakes: [Stake!]! @derivedFrom(field: "user")
+  withdraws: [Withdraw!]! @derivedFrom(field: "user")
+  rewardsPaid: [RewardPaid!]! @derivedFrom(field: "user")
 }
