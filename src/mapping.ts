@@ -20,7 +20,8 @@ import {
   Stake as StakeEntity,
   Withdraw as WithdrawEntity,
   RewardPaid as RewardPaidEntity,
-  User
+  User,
+  UserLMCPosition
 } from "../generated/schema"
 
 export function handleOwnershipTransferred(event: OwnershipTransferred): void {}
@@ -56,7 +57,6 @@ export function handleRewardAdded(event: RewardAdded): void {}
 export function handleRewardExtended(event: RewardExtended): void {}
 
 export function handleRewardPaid(event: RewardPaid): void {
-  CreateUser(event.params.user)
   let entity = RewardPaidEntity.load(event.transaction.hash.toHex())
 
   // error case
@@ -72,18 +72,44 @@ export function handleRewardPaid(event: RewardPaid): void {
     entity.timestamp = event.block.timestamp
     entity.user = event.params.user.toHex()
     entity.lmc = event.address.toHex()
-    entity.tokens = new Array<Bytes>()
-    entity.amounts = new Array<BigInt>()
+
+    let stakingRewardsInstance = StakingRewards.bind(event.address)
+    let rewardTokensCount = stakingRewardsInstance.getRewardsTokensCount().toI32()
+
+    let tokens = new Array<Bytes>(rewardTokensCount)
+    let amounts = new Array<BigInt>(rewardTokensCount)
+
+    // fill up tokens array from staking contract
+    // fill up amounts array with 0s
+    for (let i = 0; i < rewardTokensCount; i++) {
+      tokens[i] = stakingRewardsInstance.rewardsTokensArr(BigInt.fromI32(i)) // store reward token's addresses
+      amounts[i] = BigInt.fromI32(0) // set 0 amounts by default
+    }
+
+    entity.tokens = tokens
+    entity.amounts = amounts
   }
 
-  entity.tokens.push(event.params.rewardToken)
-  entity.amounts.push(event.params.rewardAmount)
+  // add amount
+  let amounts = entity.amounts
+  let index = entity.tokens.indexOf(event.params.rewardToken)
+  amounts[index] = amounts[index].plus(event.params.rewardAmount)
+  entity.amounts = amounts // TODO
 
   entity.save()
+
+  // save in user's position
+  CreateUser(event.params.user)
+  UpdateUserPositionOnRewardPaid(
+    event.params.user,
+    event.address,
+    event.block.number,
+    event.params.rewardToken,
+    event.params.rewardAmount,
+  )
 }
 
 export function handleStaked(event: Staked): void {
-  CreateUser(event.params.user)
   let entity = new StakeEntity(event.transaction.hash.toHex())
   let stakingRewardsInstance = StakingRewards.bind(event.address)
 
@@ -95,10 +121,18 @@ export function handleStaked(event: Staked): void {
   entity.amount = event.params.amount
 
   entity.save()
+
+  // save in user's position
+  CreateUser(event.params.user)
+  UpdateUserPositionOnStake(
+    event.params.user,
+    event.address,
+    event.block.number,
+    event.params.amount,
+  )
 }
 
 export function handleWithdrawn(event: Withdrawn): void {
-  CreateUser(event.params.user)
   let entity = new WithdrawEntity(event.transaction.hash.toHex())
   let stakingRewardsInstance = StakingRewards.bind(event.address)
 
@@ -110,16 +144,112 @@ export function handleWithdrawn(event: Withdrawn): void {
   entity.amount = event.params.amount
 
   entity.save()
+
+  // save in user's position
+  CreateUser(event.params.user)
+  UpdateUserPositionOnWithdraw(
+    event.params.user,
+    event.address,
+    event.block.number,
+    event.params.amount,
+  )
 }
 
 function CreateUser(address: Address): void {
-  let entity = User.load(address.toHex())
+  let user = User.load(address.toHex())
 
-  if (entity === null) {
-    entity = new User(address.toHex())
-    entity.save()
+  if (user === null) {
+    user = new User(address.toHex())
+    user.save()
   }
 }
+
+function GetUserPosition(user: Address, lmc: Address): UserLMCPosition | null {
+  let positionID = user.toHex() + "-" + lmc.toHex()
+  let position = UserLMCPosition.load(positionID)
+
+  if (position === null) {
+    position = new UserLMCPosition(positionID)
+    position.lastUpdatedInBlock = BigInt.fromI32(0)
+    position.user = user.toHex()
+    position.lmc = lmc.toHex()
+    position.active = false
+    position.totalStaked = BigInt.fromI32(0)
+
+    let stakingRewardsInstance = StakingRewards.bind(lmc)
+    let rewardTokensCount = stakingRewardsInstance.getRewardsTokensCount().toI32()
+
+    // create empty rewards amount array
+    let rewards = new Array<BigInt>(rewardTokensCount)
+    for (let i = 0; i < rewardTokensCount; i++) {
+      rewards[i] = BigInt.fromI32(0)
+    }
+
+    position.rewards = rewards
+
+    position.save()
+  }
+
+  return position
+}
+
+function UpdateUserPositionOnStake(
+  user: Address,
+  lmc: Address,
+  blockNumber: BigInt,
+  stakedAmount: BigInt
+): void {
+  let position = GetUserPosition(user, lmc)
+
+  position.lastUpdatedInBlock = blockNumber
+  position.active = true
+  position.totalStaked = position.totalStaked.plus(stakedAmount)
+
+  position.save()
+}
+
+function UpdateUserPositionOnWithdraw(
+  user: Address,
+  lmc: Address,
+  blockNumber: BigInt,
+  withdrawnAmount: BigInt // TODO: check withdrawn amount
+): void {
+  let position = GetUserPosition(user, lmc)
+
+  position.lastUpdatedInBlock = blockNumber
+  position.active = false
+  position.totalStaked = BigInt.fromI32(0)
+
+  position.save()
+}
+
+function UpdateUserPositionOnRewardPaid(
+  user: Address,
+  lmc: Address,
+  blockNumber: BigInt,
+  rewardToken: Address,
+  rewardPaid: BigInt
+): void {
+  let position = GetUserPosition(user, lmc)
+
+  position.lastUpdatedInBlock = blockNumber
+
+  let stakingRewardsInstance = StakingRewards.bind(lmc)
+  let rewardTokensCount = stakingRewardsInstance.getRewardsTokensCount().toI32()
+
+  for (let i = 0; i < rewardTokensCount; i++) {
+    let address = stakingRewardsInstance.rewardsTokensArr(BigInt.fromI32(i))
+    if (address == rewardToken) {
+      let rewards = position.rewards
+      rewards[i] = rewards[i].plus(rewardPaid)
+      position.rewards = rewards // TODO
+      break
+    }
+  }
+
+  position.save()
+}
+
 
   // - contract.hasStakingStarted(...)
   // - contract.isOwner(...)

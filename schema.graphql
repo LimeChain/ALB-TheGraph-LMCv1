@@ -11,7 +11,7 @@ type LMC @entity {
 }
 
 type Stake @entity {
-  id: ID!
+  id: ID! # transaction hash
   blockNumber: BigInt!
   timestamp: BigInt!
 
@@ -22,7 +22,7 @@ type Stake @entity {
 }
 
 type Withdraw @entity {
-  id: ID!
+  id: ID! # transaction hash
   blockNumber: BigInt!
   timestamp: BigInt!
 
@@ -33,7 +33,7 @@ type Withdraw @entity {
 }
 
 type RewardPaid @entity {
-  id: ID!
+  id: ID! # transaction hash
   blockNumber: BigInt!
   timestamp: BigInt!
 
@@ -44,9 +44,23 @@ type RewardPaid @entity {
 }
 
 type User @entity {
-  id: ID!
+  id: ID! # user's address
+
+  positions: [UserLMCPosition!]! @derivedFrom(field: "user")
 
   stakes: [Stake!]! @derivedFrom(field: "user")
   withdraws: [Withdraw!]! @derivedFrom(field: "user")
   rewardsPaid: [RewardPaid!]! @derivedFrom(field: "user")
+}
+
+type UserLMCPosition @entity {
+  id: ID! # `${user.id}-${lmc.id}`
+  lastUpdatedInBlock: BigInt!
+
+  user: User!
+  lmc: LMC!
+
+  active: Boolean!
+  totalStaked: BigInt!
+  rewards: [BigInt!]!
 }
