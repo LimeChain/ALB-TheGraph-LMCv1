@@ -57,7 +57,7 @@ export function handleRewardAdded(event: RewardAdded): void {}
 export function handleRewardExtended(event: RewardExtended): void {}
 
 export function handleRewardPaid(event: RewardPaid): void {
-  let entity = RewardPaidEntity.load(event.transaction.hash.toHex())
+  let entity = RewardPaidEntity.load(event.transaction.hash.toHex() + "-" + event.logIndex.toHex())
 
   // error case
   if (entity != null && entity.blockNumber != event.block.number) {
@@ -110,7 +110,7 @@ export function handleRewardPaid(event: RewardPaid): void {
 }
 
 export function handleStaked(event: Staked): void {
-  let entity = new StakeEntity(event.transaction.hash.toHex())
+  let entity = new StakeEntity(event.transaction.hash.toHex() + "-" + event.logIndex.toHex())
   let stakingRewardsInstance = StakingRewards.bind(event.address)
 
   entity.blockNumber = event.block.number
@@ -133,7 +133,7 @@ export function handleStaked(event: Staked): void {
 }
 
 export function handleWithdrawn(event: Withdrawn): void {
-  let entity = new WithdrawEntity(event.transaction.hash.toHex())
+  let entity = new WithdrawEntity(event.transaction.hash.toHex() + "-" + event.logIndex.toHex())
   let stakingRewardsInstance = StakingRewards.bind(event.address)
 
   entity.blockNumber = event.block.number
