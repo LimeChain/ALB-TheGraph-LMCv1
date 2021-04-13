@@ -73,4 +73,8 @@ type UserLMCPosition @entity {
   active: Boolean!
   totalStaked: BigDecimal!
   rewards: [BigDecimal!]!
+
+  gasOnStakes: BigDecimal!
+  gasOnWithdraws: BigDecimal!
+  gasOnRewardsPaid: BigDecimal!
 }
