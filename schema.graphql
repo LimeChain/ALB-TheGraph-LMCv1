@@ -6,7 +6,7 @@ type LMC @entity {
   address: Bytes!
   stakingToken: Bytes!
   rewardsTokens: [Bytes!]!
-  rewardsAmounts: [BigInt!]!
+  rewardsAmounts: [BigDecimal!]!
   rewardsDuration: BigInt
 }
 
@@ -15,10 +15,13 @@ type Stake @entity {
   blockNumber: BigInt!
   timestamp: BigInt!
 
+  gasUsed: BigDecimal!
+  gasPrice: BigDecimal!
+
   user: User!
   lmc: LMC!
   token: Bytes!
-  amount: BigInt!
+  amount: BigDecimal!
 }
 
 type Withdraw @entity {
@@ -26,10 +29,13 @@ type Withdraw @entity {
   blockNumber: BigInt!
   timestamp: BigInt!
 
+  gasUsed: BigInt!
+  gasPrice: BigInt!
+
   user: User!
   lmc: LMC!
   token: Bytes!
-  amount: BigInt!
+  amount: BigDecimal!
 }
 
 type RewardPaid @entity {
@@ -37,10 +43,13 @@ type RewardPaid @entity {
   blockNumber: BigInt!
   timestamp: BigInt!
 
+  gasUsed: BigDecimal!
+  gasPrice: BigDecimal!
+
   user: User!
   lmc: LMC!
   tokens: [Bytes!]!
-  amounts: [BigInt!]!
+  amounts: [BigDecimal!]!
 }
 
 type User @entity {
@@ -56,11 +65,12 @@ type User @entity {
 type UserLMCPosition @entity {
   id: ID! # `${user.id}-${lmc.id}`
   lastUpdatedInBlock: BigInt!
+  lastUpdateTimestamp: BigInt!
 
   user: User!
   lmc: LMC!
 
   active: Boolean!
-  totalStaked: BigInt!
-  rewards: [BigInt!]!
+  totalStaked: BigDecimal!
+  rewards: [BigDecimal!]!
 }

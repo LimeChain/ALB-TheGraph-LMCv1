@@ -1,4 +1,4 @@
-import { BigInt, Bytes, Address, json, log } from "@graphprotocol/graph-ts"
+import { BigInt, Bytes, Address, json, log, BigDecimal } from "@graphprotocol/graph-ts"
 import {
   StakingRewardsFactory,
   OwnershipTransferred,
@@ -39,14 +39,18 @@ export function handleDeploy(call: DeployCall): void {
   entity.address = address
   entity.stakingToken = call.inputs._stakingToken
 
-  let array = call.inputs._rewardsTokens
-  let out = new Array<Bytes>(array.length)
-  for (let i = 0; i < array.length; i++) {
-    out[i] = array[i]
+  let rtArray = call.inputs._rewardsTokens
+  let raArray = call.inputs._rewardsAmounts
+  let len = rtArray.length
+  let rt = new Array<Bytes>(len)
+  let ra = new Array<BigDecimal>(len)
+  for (let i = 0; i < len; i++) {
+    rt[i] = rtArray[i]
+    ra[i] = raArray[i].toBigDecimal()
   }
 
-  entity.rewardsTokens = out
-  entity.rewardsAmounts = call.inputs._rewardsAmounts
+  entity.rewardsTokens = rt
+  entity.rewardsAmounts = ra
   entity.rewardsDuration = call.inputs._rewardsDuration
 
   entity.save()
@@ -70,6 +74,8 @@ export function handleRewardPaid(event: RewardPaid): void {
 
     entity.blockNumber = event.block.number
     entity.timestamp = event.block.timestamp
+    entity.gasPrice = event.transaction.gasPrice.toBigDecimal()
+    entity.gasUsed = event.transaction.gasUsed.toBigDecimal()
     entity.user = event.params.user.toHex()
     entity.lmc = event.address.toHex()
 
@@ -77,13 +83,13 @@ export function handleRewardPaid(event: RewardPaid): void {
     let rewardTokensCount = stakingRewardsInstance.getRewardsTokensCount().toI32()
 
     let tokens = new Array<Bytes>(rewardTokensCount)
-    let amounts = new Array<BigInt>(rewardTokensCount)
+    let amounts = new Array<BigDecimal>(rewardTokensCount)
 
     // fill up tokens array from staking contract
     // fill up amounts array with 0s
     for (let i = 0; i < rewardTokensCount; i++) {
       tokens[i] = stakingRewardsInstance.rewardsTokensArr(BigInt.fromI32(i)) // store reward token's addresses
-      amounts[i] = BigInt.fromI32(0) // set 0 amounts by default
+      amounts[i] = new BigDecimal(BigInt.fromI32(0)) // set 0 amounts by default
     }
 
     entity.tokens = tokens
@@ -93,7 +99,7 @@ export function handleRewardPaid(event: RewardPaid): void {
   // add amount
   let amounts = entity.amounts
   let index = entity.tokens.indexOf(event.params.rewardToken)
-  amounts[index] = amounts[index].plus(event.params.rewardAmount)
+  amounts[index] = amounts[index].plus(event.params.rewardAmount.toBigDecimal())
   entity.amounts = amounts // TODO
 
   entity.save()
@@ -104,8 +110,9 @@ export function handleRewardPaid(event: RewardPaid): void {
     event.params.user,
     event.address,
     event.block.number,
+    event.block.timestamp,
     event.params.rewardToken,
-    event.params.rewardAmount,
+    event.params.rewardAmount.toBigDecimal(),
   )
 }
 
@@ -115,10 +122,12 @@ export function handleStaked(event: Staked): void {
 
   entity.blockNumber = event.block.number
   entity.timestamp = event.block.timestamp
+  entity.gasPrice = event.transaction.gasPrice.toBigDecimal()
+  entity.gasUsed = event.transaction.gasUsed.toBigDecimal()
   entity.user = event.params.user.toHex()
   entity.lmc = event.address.toHex()
   entity.token = stakingRewardsInstance.stakingToken()
-  entity.amount = event.params.amount
+  entity.amount = event.params.amount.toBigDecimal()
 
   entity.save()
 
@@ -128,7 +137,8 @@ export function handleStaked(event: Staked): void {
     event.params.user,
     event.address,
     event.block.number,
-    event.params.amount,
+    event.block.timestamp,
+    event.params.amount.toBigDecimal(),
   )
 }
 
@@ -138,10 +148,12 @@ export function handleWithdrawn(event: Withdrawn): void {
 
   entity.blockNumber = event.block.number
   entity.timestamp = event.block.timestamp
+  entity.gasPrice = event.transaction.gasPrice
+  entity.gasUsed = event.transaction.gasUsed
   entity.user = event.params.user.toHex()
   entity.lmc = event.address.toHex()
   entity.token = stakingRewardsInstance.stakingToken()
-  entity.amount = event.params.amount
+  entity.amount = event.params.amount.toBigDecimal()
 
   entity.save()
 
@@ -151,7 +163,8 @@ export function handleWithdrawn(event: Withdrawn): void {
     event.params.user,
     event.address,
     event.block.number,
-    event.params.amount,
+    event.block.timestamp,
+    event.params.amount.toBigDecimal(),
   )
 }
 
@@ -171,18 +184,19 @@ function GetUserPosition(user: Address, lmc: Address): UserLMCPosition | null {
   if (position === null) {
     position = new UserLMCPosition(positionID)
     position.lastUpdatedInBlock = BigInt.fromI32(0)
+    position.lastUpdateTimestamp = BigInt.fromI32(0)
     position.user = user.toHex()
     position.lmc = lmc.toHex()
     position.active = false
-    position.totalStaked = BigInt.fromI32(0)
+    position.totalStaked = new BigDecimal(BigInt.fromI32(0))
 
     let stakingRewardsInstance = StakingRewards.bind(lmc)
     let rewardTokensCount = stakingRewardsInstance.getRewardsTokensCount().toI32()
 
     // create empty rewards amount array
-    let rewards = new Array<BigInt>(rewardTokensCount)
+    let rewards = new Array<BigDecimal>(rewardTokensCount)
     for (let i = 0; i < rewardTokensCount; i++) {
-      rewards[i] = BigInt.fromI32(0)
+      rewards[i] = new BigDecimal(BigInt.fromI32(0))
     }
 
     position.rewards = rewards
@@ -197,11 +211,13 @@ function UpdateUserPositionOnStake(
   user: Address,
   lmc: Address,
   blockNumber: BigInt,
-  stakedAmount: BigInt
+  timestamp: BigInt,
+  stakedAmount: BigDecimal
 ): void {
   let position = GetUserPosition(user, lmc)
 
   position.lastUpdatedInBlock = blockNumber
+  position.lastUpdateTimestamp = timestamp
   position.active = true
   position.totalStaked = position.totalStaked.plus(stakedAmount)
 
@@ -212,13 +228,19 @@ function UpdateUserPositionOnWithdraw(
   user: Address,
   lmc: Address,
   blockNumber: BigInt,
-  withdrawnAmount: BigInt // TODO: check withdrawn amount
+  timestamp: BigInt,
+  withdrawnAmount: BigDecimal
 ): void {
   let position = GetUserPosition(user, lmc)
 
-  position.lastUpdatedInBlock = blockNumber
-  position.active = false
-  position.totalStaked = BigInt.fromI32(0)
+  if (withdrawnAmount == position.totalStaked) {
+    position.lastUpdatedInBlock = blockNumber
+    position.lastUpdateTimestamp = timestamp
+    position.active = false
+    position.totalStaked = new BigDecimal(BigInt.fromI32(0))
+  } else {
+    log.error("Withdraw amount is less than staked! User: ", [user.toHexString()])
+  }
 
   position.save()
 }
@@ -227,12 +249,14 @@ function UpdateUserPositionOnRewardPaid(
   user: Address,
   lmc: Address,
   blockNumber: BigInt,
+  timestamp: BigInt,
   rewardToken: Address,
-  rewardPaid: BigInt
+  rewardPaid: BigDecimal
 ): void {
   let position = GetUserPosition(user, lmc)
 
   position.lastUpdatedInBlock = blockNumber
+  position.lastUpdateTimestamp = timestamp
 
   let stakingRewardsInstance = StakingRewards.bind(lmc)
   let rewardTokensCount = stakingRewardsInstance.getRewardsTokensCount().toI32()
