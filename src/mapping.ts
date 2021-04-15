@@ -112,8 +112,7 @@ export function handleRewardPaid(event: RewardPaid): void {
     event.block.number,
     event.block.timestamp,
     event.params.rewardToken,
-    event.params.rewardAmount.toBigDecimal(),
-    event.transaction.gasPrice.toBigDecimal().times(event.transaction.gasUsed.toBigDecimal())
+    event.params.rewardAmount.toBigDecimal()
   )
 }
 
@@ -139,8 +138,7 @@ export function handleStaked(event: Staked): void {
     event.address,
     event.block.number,
     event.block.timestamp,
-    event.params.amount.toBigDecimal(),
-    event.transaction.gasPrice.toBigDecimal().times(event.transaction.gasUsed.toBigDecimal())
+    event.params.amount.toBigDecimal()
   )
 }
 
@@ -166,8 +164,7 @@ export function handleWithdrawn(event: Withdrawn): void {
     event.address,
     event.block.number,
     event.block.timestamp,
-    event.params.amount.toBigDecimal(),
-    event.transaction.gasPrice.toBigDecimal().times(event.transaction.gasUsed.toBigDecimal())
+    event.params.amount.toBigDecimal()
   )
 }
 
@@ -203,10 +200,6 @@ function GetUserPosition(user: Address, lmc: Address): UserLMCPosition | null {
     }
     position.rewards = rewards
 
-    position.gasOnStakes = new BigDecimal(BigInt.fromI32(0))
-    position.gasOnWithdraws = new BigDecimal(BigInt.fromI32(0))
-    position.gasOnRewardsPaid = new BigDecimal(BigInt.fromI32(0))
-
     position.save()
   }
 
@@ -219,7 +212,6 @@ function UpdateUserPositionOnStake(
   blockNumber: BigInt,
   timestamp: BigInt,
   stakedAmount: BigDecimal,
-  gasUsed: BigDecimal
 ): void {
   let position = GetUserPosition(user, lmc)
 
@@ -227,7 +219,6 @@ function UpdateUserPositionOnStake(
   position.lastUpdateTimestamp = timestamp
   position.active = true
   position.totalStaked = position.totalStaked.plus(stakedAmount)
-  position.gasOnStakes = position.gasOnStakes.plus(gasUsed)
 
   position.save()
 }
@@ -238,7 +229,6 @@ function UpdateUserPositionOnWithdraw(
   blockNumber: BigInt,
   timestamp: BigInt,
   withdrawnAmount: BigDecimal,
-  gasUsed: BigDecimal
 ): void {
   let position = GetUserPosition(user, lmc)
 
@@ -247,7 +237,6 @@ function UpdateUserPositionOnWithdraw(
     position.lastUpdateTimestamp = timestamp
     position.active = false
     position.totalStaked = new BigDecimal(BigInt.fromI32(0))
-    position.gasOnWithdraws = position.gasOnWithdraws.plus(gasUsed)
   } else {
     log.error("Withdraw amount is less than staked! User: ", [user.toHexString()])
   }
@@ -262,7 +251,6 @@ function UpdateUserPositionOnRewardPaid(
   timestamp: BigInt,
   rewardToken: Address,
   rewardPaid: BigDecimal,
-  gasUsed: BigDecimal
 ): void {
   let position = GetUserPosition(user, lmc)
 
@@ -281,8 +269,6 @@ function UpdateUserPositionOnRewardPaid(
       break
     }
   }
-
-  position.gasOnRewardsPaid = position.gasOnRewardsPaid.plus(gasUsed)
 
   position.save()
 }
