@@ -70,7 +70,7 @@ export function handleRewardPaid(event: RewardPaid): void {
   }
 
   if (entity === null) {
-    entity = new RewardPaidEntity(event.transaction.hash.toHex())
+    entity = new RewardPaidEntity(event.transaction.hash.toHex() + "-" + event.logIndex.toHex())
 
     entity.blockNumber = event.block.number
     entity.timestamp = event.block.timestamp
