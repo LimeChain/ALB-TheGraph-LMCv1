@@ -48,8 +48,8 @@ type RewardPaid @entity {
 
   user: User!
   lmc: LMC!
-  tokens: [Bytes!]!
-  amounts: [BigDecimal!]!
+  token: Bytes!
+  amount: BigDecimal!
 }
 
 type User @entity {

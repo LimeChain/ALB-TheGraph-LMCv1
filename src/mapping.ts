@@ -61,46 +61,18 @@ export function handleRewardAdded(event: RewardAdded): void {}
 export function handleRewardExtended(event: RewardExtended): void {}
 
 export function handleRewardPaid(event: RewardPaid): void {
-  let entity = RewardPaidEntity.load(event.transaction.hash.toHex() + "-" + event.logIndex.toHex())
+  let id = event.transaction.hash.toHex() + "-" + event.logIndex.toHex()
+  let entity = new RewardPaidEntity(id)
 
-  // error case
-  if (entity != null && entity.blockNumber != event.block.number) {
-    log.error('BlockNumbers not matching ', [entity.id])
-    return
-  }
+  entity.blockNumber = event.block.number
+  entity.timestamp = event.block.timestamp
+  entity.gasPrice = event.transaction.gasPrice.toBigDecimal()
+  entity.gasUsed = event.transaction.gasUsed.toBigDecimal()
+  entity.user = event.params.user.toHex()
+  entity.lmc = event.address.toHex()
 
-  if (entity === null) {
-    entity = new RewardPaidEntity(event.transaction.hash.toHex() + "-" + event.logIndex.toHex())
-
-    entity.blockNumber = event.block.number
-    entity.timestamp = event.block.timestamp
-    entity.gasPrice = event.transaction.gasPrice.toBigDecimal()
-    entity.gasUsed = event.transaction.gasUsed.toBigDecimal()
-    entity.user = event.params.user.toHex()
-    entity.lmc = event.address.toHex()
-
-    let stakingRewardsInstance = StakingRewards.bind(event.address)
-    let rewardTokensCount = stakingRewardsInstance.getRewardsTokensCount().toI32()
-
-    let tokens = new Array<Bytes>(rewardTokensCount)
-    let amounts = new Array<BigDecimal>(rewardTokensCount)
-
-    // fill up tokens array from staking contract
-    // fill up amounts array with 0s
-    for (let i = 0; i < rewardTokensCount; i++) {
-      tokens[i] = stakingRewardsInstance.rewardsTokensArr(BigInt.fromI32(i)) // store reward token's addresses
-      amounts[i] = new BigDecimal(BigInt.fromI32(0)) // set 0 amounts by default
-    }
-
-    entity.tokens = tokens
-    entity.amounts = amounts
-  }
-
-  // add amount
-  let amounts = entity.amounts
-  let index = entity.tokens.indexOf(event.params.rewardToken)
-  amounts[index] = amounts[index].plus(event.params.rewardAmount.toBigDecimal())
-  entity.amounts = amounts // TODO
+  entity.token = event.params.rewardToken
+  entity.amount = event.params.rewardAmount.toBigDecimal()
 
   entity.save()
 
@@ -117,7 +89,8 @@ export function handleRewardPaid(event: RewardPaid): void {
 }
 
 export function handleStaked(event: Staked): void {
-  let entity = new StakeEntity(event.transaction.hash.toHex() + "-" + event.logIndex.toHex())
+  let id = event.transaction.hash.toHex() + "-" + event.logIndex.toHex()
+  let entity = new StakeEntity(id)
   let stakingRewardsInstance = StakingRewards.bind(event.address)
 
   entity.blockNumber = event.block.number
@@ -143,7 +116,8 @@ export function handleStaked(event: Staked): void {
 }
 
 export function handleWithdrawn(event: Withdrawn): void {
-  let entity = new WithdrawEntity(event.transaction.hash.toHex() + "-" + event.logIndex.toHex())
+  let id = event.transaction.hash.toHex() + "-" + event.logIndex.toHex()
+  let entity = new WithdrawEntity(id)
   let stakingRewardsInstance = StakingRewards.bind(event.address)
 
   entity.blockNumber = event.block.number
