@@ -18,8 +18,8 @@ type Stake @entity {
   gasUsed: BigDecimal!
   gasPrice: BigDecimal!
 
-  user: User!
-  lmc: LMC!
+  position: UserLMCPosition!
+
   token: Bytes!
   amount: BigDecimal!
 }
@@ -32,8 +32,8 @@ type Withdraw @entity {
   gasUsed: BigInt!
   gasPrice: BigInt!
 
-  user: User!
-  lmc: LMC!
+  position: UserLMCPosition!
+
   token: Bytes!
   amount: BigDecimal!
 }
@@ -46,8 +46,8 @@ type RewardPaid @entity {
   gasUsed: BigDecimal!
   gasPrice: BigDecimal!
 
-  user: User!
-  lmc: LMC!
+  position: UserLMCPosition!
+
   token: Bytes!
   amount: BigDecimal!
 }
@@ -56,10 +56,6 @@ type User @entity {
   id: ID! # user's address
 
   positions: [UserLMCPosition!]! @derivedFrom(field: "user")
-
-  stakes: [Stake!]! @derivedFrom(field: "user")
-  withdraws: [Withdraw!]! @derivedFrom(field: "user")
-  rewardsPaid: [RewardPaid!]! @derivedFrom(field: "user")
 }
 
 type UserLMCPosition @entity {
@@ -71,6 +67,11 @@ type UserLMCPosition @entity {
   lmc: LMC!
 
   active: Boolean!
+  activeStakes: [String!]!
   totalStaked: BigDecimal!
-  rewards: [BigDecimal!]!
+  totalRewards: [BigDecimal!]!
+
+  stakes: [Stake!]! @derivedFrom(field: "position")
+  withdraws: [Withdraw!]! @derivedFrom(field: "position")
+  rewardsPaid: [RewardPaid!]! @derivedFrom(field: "position")
 }

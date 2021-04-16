@@ -1,4 +1,4 @@
-import { BigInt, Bytes, Address, json, log, BigDecimal } from "@graphprotocol/graph-ts"
+import { BigInt, Bytes, Address, log, BigDecimal } from "@graphprotocol/graph-ts"
 import {
   StakingRewardsFactory,
   OwnershipTransferred,
@@ -68,8 +68,7 @@ export function handleRewardPaid(event: RewardPaid): void {
   entity.timestamp = event.block.timestamp
   entity.gasPrice = event.transaction.gasPrice.toBigDecimal()
   entity.gasUsed = event.transaction.gasUsed.toBigDecimal()
-  entity.user = event.params.user.toHex()
-  entity.lmc = event.address.toHex()
+  entity.position = event.params.user.toHex() + "-" + event.address.toHex()
   entity.token = event.params.rewardToken
   entity.amount = event.params.rewardAmount.toBigDecimal()
 
@@ -96,8 +95,7 @@ export function handleStaked(event: Staked): void {
   entity.timestamp = event.block.timestamp
   entity.gasPrice = event.transaction.gasPrice.toBigDecimal()
   entity.gasUsed = event.transaction.gasUsed.toBigDecimal()
-  entity.user = event.params.user.toHex()
-  entity.lmc = event.address.toHex()
+  entity.position = event.params.user.toHex() + "-" + event.address.toHex()
   entity.token = stakingRewardsInstance.stakingToken()
   entity.amount = event.params.amount.toBigDecimal()
 
@@ -110,7 +108,8 @@ export function handleStaked(event: Staked): void {
     event.address,
     event.block.number,
     event.block.timestamp,
-    event.params.amount.toBigDecimal()
+    event.params.amount.toBigDecimal(),
+    id
   )
 }
 
@@ -123,8 +122,7 @@ export function handleWithdrawn(event: Withdrawn): void {
   entity.timestamp = event.block.timestamp
   entity.gasPrice = event.transaction.gasPrice
   entity.gasUsed = event.transaction.gasUsed
-  entity.user = event.params.user.toHex()
-  entity.lmc = event.address.toHex()
+  entity.position = event.params.user.toHex() + "-" + event.address.toHex()
   entity.token = stakingRewardsInstance.stakingToken()
   entity.amount = event.params.amount.toBigDecimal()
 
@@ -171,7 +169,7 @@ function GetUserPosition(user: Address, lmc: Address): UserLMCPosition | null {
     for (let i = 0; i < rewardTokensCount; i++) {
       rewards[i] = new BigDecimal(BigInt.fromI32(0))
     }
-    position.rewards = rewards
+    position.totalRewards = rewards
 
     position.save()
   }
@@ -185,6 +183,7 @@ function UpdateUserPositionOnStake(
   blockNumber: BigInt,
   timestamp: BigInt,
   stakedAmount: BigDecimal,
+  id: string
 ): void {
   let position = GetUserPosition(user, lmc)
 
@@ -192,6 +191,7 @@ function UpdateUserPositionOnStake(
   position.lastUpdatedAtTimestamp = timestamp
   position.active = true
   position.totalStaked = position.totalStaked.plus(stakedAmount)
+  position.activeStakes.push(id)
 
   position.save()
 }
@@ -210,6 +210,7 @@ function UpdateUserPositionOnWithdraw(
     position.lastUpdatedAtTimestamp = timestamp
     position.active = false
     position.totalStaked = new BigDecimal(BigInt.fromI32(0))
+    position.activeStakes = []
   } else {
     log.error("Withdraw amount is less than staked! User: ", [user.toHexString()])
   }
@@ -236,9 +237,9 @@ function UpdateUserPositionOnRewardPaid(
   for (let i = 0; i < rewardTokensCount; i++) {
     let address = stakingRewardsInstance.rewardsTokensArr(BigInt.fromI32(i))
     if (address == rewardToken) {
-      let rewards = position.rewards
+      let rewards = position.totalRewards
       rewards[i] = rewards[i].plus(rewardPaid)
-      position.rewards = rewards
+      position.totalRewards = rewards
       break
     }
   }
