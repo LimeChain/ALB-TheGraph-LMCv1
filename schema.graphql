@@ -65,7 +65,7 @@ type User @entity {
 type UserLMCPosition @entity {
   id: ID! # `${user.id}-${lmc.id}`
   lastUpdatedInBlock: BigInt!
-  lastUpdateTimestamp: BigInt!
+  lastUpdatedAtTimestamp: BigInt!
 
   user: User!
   lmc: LMC!

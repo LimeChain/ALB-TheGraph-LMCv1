@@ -70,7 +70,6 @@ export function handleRewardPaid(event: RewardPaid): void {
   entity.gasUsed = event.transaction.gasUsed.toBigDecimal()
   entity.user = event.params.user.toHex()
   entity.lmc = event.address.toHex()
-
   entity.token = event.params.rewardToken
   entity.amount = event.params.rewardAmount.toBigDecimal()
 
@@ -158,7 +157,7 @@ function GetUserPosition(user: Address, lmc: Address): UserLMCPosition | null {
   if (position === null) { // create a new position
     position = new UserLMCPosition(positionID)
     position.lastUpdatedInBlock = BigInt.fromI32(0)
-    position.lastUpdateTimestamp = BigInt.fromI32(0)
+    position.lastUpdatedAtTimestamp = BigInt.fromI32(0)
     position.user = user.toHex()
     position.lmc = lmc.toHex()
     position.active = false
@@ -190,7 +189,7 @@ function UpdateUserPositionOnStake(
   let position = GetUserPosition(user, lmc)
 
   position.lastUpdatedInBlock = blockNumber
-  position.lastUpdateTimestamp = timestamp
+  position.lastUpdatedAtTimestamp = timestamp
   position.active = true
   position.totalStaked = position.totalStaked.plus(stakedAmount)
 
@@ -208,7 +207,7 @@ function UpdateUserPositionOnWithdraw(
 
   if (withdrawnAmount == position.totalStaked) {
     position.lastUpdatedInBlock = blockNumber
-    position.lastUpdateTimestamp = timestamp
+    position.lastUpdatedAtTimestamp = timestamp
     position.active = false
     position.totalStaked = new BigDecimal(BigInt.fromI32(0))
   } else {
@@ -229,7 +228,7 @@ function UpdateUserPositionOnRewardPaid(
   let position = GetUserPosition(user, lmc)
 
   position.lastUpdatedInBlock = blockNumber
-  position.lastUpdateTimestamp = timestamp
+  position.lastUpdatedAtTimestamp = timestamp
 
   let stakingRewardsInstance = StakingRewards.bind(lmc)
   let rewardTokensCount = stakingRewardsInstance.getRewardsTokensCount().toI32()
@@ -239,7 +238,7 @@ function UpdateUserPositionOnRewardPaid(
     if (address == rewardToken) {
       let rewards = position.rewards
       rewards[i] = rewards[i].plus(rewardPaid)
-      position.rewards = rewards // TODO
+      position.rewards = rewards
       break
     }
   }
