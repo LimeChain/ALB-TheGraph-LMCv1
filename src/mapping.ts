@@ -159,6 +159,7 @@ function GetUserPosition(user: Address, lmc: Address): UserLMCPosition | null {
     position.user = user.toHex()
     position.lmc = lmc.toHex()
     position.active = false
+    position.activeStakes = new Array<string>()
     position.totalStaked = new BigDecimal(BigInt.fromI32(0))
 
     let stakingRewardsInstance = StakingRewards.bind(lmc)
@@ -191,7 +192,9 @@ function UpdateUserPositionOnStake(
   position.lastUpdatedAtTimestamp = timestamp
   position.active = true
   position.totalStaked = position.totalStaked.plus(stakedAmount)
-  position.activeStakes.push(id)
+  var clone = position.activeStakes.slice(0)
+  clone.push(id)
+  position.activeStakes = clone
 
   position.save()
 }
